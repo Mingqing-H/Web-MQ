@@ -3,6 +3,7 @@ import { FRAGMENT_SHADER, VERTEX_SHADER } from './shaders';
 
 const MAX_RIPPLES = 8;
 const RIPPLE_LIFETIME = 3;
+const RIPPLE_BASELINE = 60;
 
 type TextureSource = HTMLCanvasElement | HTMLImageElement | HTMLVideoElement;
 
@@ -21,6 +22,7 @@ interface Uniforms {
   rain: WebGLUniformLocation | null;
   blur: WebGLUniformLocation | null;
   refraction: WebGLUniformLocation | null;
+  rippleStrength: WebGLUniformLocation | null;
   lightning: WebGLUniformLocation | null;
   speed: WebGLUniformLocation | null;
   dropSize: WebGLUniformLocation | null;
@@ -101,7 +103,7 @@ export class RainRenderer {
   }
 
   setSettings(settings: RainSettings): void {
-    this.settings = { ...settings };
+    this.settings = { ...DEFAULT_SETTINGS, ...settings };
   }
 
   async setMediaFile(file: File | null): Promise<void> {
@@ -258,6 +260,7 @@ export class RainRenderer {
       rain: get('u_rainAmount'),
       blur: get('u_blurMix'),
       refraction: get('u_refraction'),
+      rippleStrength: get('u_rippleStrength'),
       lightning: get('u_lightning'),
       speed: get('u_speed'),
       dropSize: get('u_dropSize'),
@@ -392,6 +395,9 @@ export class RainRenderer {
     const dropSize = 2.2 - (settings.size / 100) * 1.55;
     const density = 0.725 + (settings.density / 100) * 1.275;
     const zoom = 2 - (settings.zoom / 100) * 1.6;
+    const ripple = Number.isFinite(settings.ripple)
+      ? settings.ripple
+      : DEFAULT_SETTINGS.ripple;
 
     gl.useProgram(this.program);
     gl.uniform3f(uniforms.resolution, this.canvas.width, this.canvas.height, 1);
@@ -424,6 +430,10 @@ export class RainRenderer {
     gl.uniform1f(uniforms.rain, settings.rain / 100);
     gl.uniform1f(uniforms.blur, settings.blur / 100);
     gl.uniform1f(uniforms.refraction, settings.refraction / 100);
+    gl.uniform1f(
+      uniforms.rippleStrength,
+      ripple / RIPPLE_BASELINE,
+    );
     gl.uniform1f(uniforms.lightning, settings.lightning ? 1 : 0);
     gl.uniform1f(uniforms.speed, settings.speed / 10);
     gl.uniform1f(uniforms.dropSize, dropSize);

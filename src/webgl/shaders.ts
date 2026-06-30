@@ -16,6 +16,7 @@ uniform sampler2D iChannel0;
 uniform float u_rainAmount;
 uniform float u_blurMix;
 uniform float u_refraction;
+uniform float u_rippleStrength;
 uniform float u_lightning;
 uniform float u_speed;
 uniform float u_dropSize;
@@ -142,8 +143,8 @@ void mainImage(out vec4 fc, in vec2 fCoord) {
       float wave = sin(lag * 105.) * band * decay;
       vec2 dir = delta / max(dist, .001);
       dir.x /= aspect;
-      rippleN += dir * wave * .007;
-      rippleGlow += abs(wave) * .12;
+      rippleN += dir * wave * .009 * u_rippleStrength;
+      rippleGlow += abs(wave) * .15 * u_rippleStrength;
     }
   }
   n += clamp(rippleN, vec2(-.025), vec2(.025));
@@ -155,7 +156,7 @@ void mainImage(out vec4 fc, in vec2 fCoord) {
   );
   vec2 bgUV = (UV + n - .5) * u_spread + .5;
   vec3 col = textureLod(iChannel0, bgUV, focus).rgb;
-  col += min(rippleGlow, .65) * vec3(.10, .14, .18);
+  col += min(rippleGlow, .65) * vec3(.12, .16, .20);
 
   #ifdef USE_POST_PROCESSING
   t = (T + 3.) * .5;

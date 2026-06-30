@@ -18,6 +18,7 @@ const RAIN_SLIDERS: SliderConfig[] = [
   { key: 'density', label: '密度', min: 0, max: 100 },
   { key: 'blur', label: '雾气', min: 0, max: 100 },
   { key: 'refraction', label: '折射', min: 0, max: 100 },
+  { key: 'ripple', label: '涟漪', min: 0, max: 100 },
   { key: 'zoom', label: '距离', min: 0, max: 100 },
 ];
 
@@ -105,7 +106,7 @@ export function ControlPanel({
       >
         <header className="control-header">
           <span className="control-mark" aria-hidden="true" />
-          <h1>雨幕控制台</h1>
+          <h1 className="control-title">雨幕控制台</h1>
           <span className="control-arrow" aria-hidden="true" />
         </header>
 

@@ -5,6 +5,7 @@ export interface RainSettings {
   density: number;
   blur: number;
   refraction: number;
+  ripple: number;
   zoom: number;
   lightning: boolean;
   spread: number;
@@ -17,6 +18,7 @@ export const DEFAULT_SETTINGS: RainSettings = {
   density: 6,
   blur: 53,
   refraction: 100,
+  ripple: 100,
   zoom: 75,
   lightning: false,
   spread: 100,
