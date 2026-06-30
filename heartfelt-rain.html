@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heartfelt Rain — WebGL2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;
+  font-family:'SF Pro Text','SF Pro Display',system-ui,-apple-system,BlinkMacSystemFont,'Inter',sans-serif}
+#glCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1}
+
+/* ── 控制面板 ── */
+#ctrl{position:fixed;top:8px;right:16px;z-index:20;width:300px;
+  background:rgba(39,39,41,.52);backdrop-filter:saturate(180%) blur(24px);
+  border:1px solid rgba(255,255,255,.06);border-radius:18px;
+  color:#fff;font-size:14px;
+  transition:all .3s ease;height:calc(100vh - 16px);overflow-y:auto}
+#ctrl.collapsed{width:auto;height:auto}
+#ctrl.collapsed .ctrl-body{display:none}
+#ctrl.collapsed .ctrl-header{border-bottom-color:transparent}
+#ctrl .ctrl-header{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;cursor:default;border-bottom:1px solid rgba(255,255,255,.08);
+  user-select:none}
+#ctrl .ctrl-header h3{font-size:14px;font-weight:600;letter-spacing:-.224px;color:#fff}
+#ctrl .ctrl-header .arrow{width:8px;height:8px;border-right:1.5px solid rgba(255,255,255,.4);
+  border-bottom:1.5px solid rgba(255,255,255,.4);transform:rotate(45deg);
+  transition:transform .3s;margin-left:8px}
+#ctrl.collapsed .ctrl-header .arrow{transform:rotate(-135deg)}
+#ctrl .ctrl-body{padding:16px 20px 20px}
+#ctrl .section{margin-bottom:16px}
+#ctrl .section-title{font-size:12px;font-weight:600;text-transform:uppercase;
+  letter-spacing:-.12px;color:rgba(255,255,255,.35);margin-bottom:12px}
+#ctrl .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+#ctrl .row label{font-size:14px;font-weight:400;color:rgba(255,255,255,.7);
+  white-space:nowrap;min-width:64px;letter-spacing:-.224px}
+#ctrl .row .val{font-size:12px;font-weight:400;color:rgba(255,255,255,.35);
+  min-width:36px;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:-.12px}
+#ctrl input[type=range]{flex:1;margin:0 12px;height:4px;-webkit-appearance:none;
+  background:rgba(255,255,255,.12);border-radius:2px;outline:none}
+#ctrl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+  background:#fff;border-radius:50%;cursor:pointer;
+  box-shadow:0 0 0 1px rgba(0,0,0,.04),0 1px 3px rgba(0,0,0,.2)}
+#ctrl .btn{display:inline-block;padding:8px 18px;border-radius:980px;
+  border:none;background:#0066cc;color:#fff;cursor:pointer;
+  font-size:14px;font-weight:400;letter-spacing:-.224px;
+  transition:all .15s;white-space:nowrap}
+#ctrl .btn:active{transform:scale(.96)}
+#ctrl .btn.secondary{background:transparent;color:#2997ff;
+  border:1px solid rgba(41,151,255,.3)}
+#ctrl .btn.secondary:hover{border-color:rgba(41,151,255,.5)}
+#ctrl .btn.secondary:active{transform:scale(.96)}
+#ctrl .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+#ctrl input[type=file]{display:none}
+#ctrl .media-name{font-size:12px;color:rgba(255,255,255,.3);margin-top:6px;
+  word-break:break-all;letter-spacing:-.12px}
+#ctrl .audio-status{font-size:11px;color:rgba(255,255,255,.32);margin-top:4px;
+  line-height:1.4;letter-spacing:-.08px}
+#ctrl .sep{height:1px;background:rgba(255,255,255,.08);margin:16px 0}
+
+/* ── 开关 ── */
+.toggle{display:inline-flex;align-items:center;width:44px;height:22px;
+  flex-shrink:0;cursor:pointer}
+.toggle input{-webkit-appearance:none;appearance:none;
+  position:fixed;top:-9999px;left:-9999px}
+.toggle .slider{width:44px;height:22px;border-radius:11px;
+  background:rgba(255,255,255,.15);position:relative;transition:.25s}
+.toggle .slider::before{content:'';position:absolute;top:3px;left:3px;
+  width:16px;height:16px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);transition:.25s}
+.toggle input:checked+.slider{background:#0066cc}
+.toggle input:checked+.slider::before{left:25px}
+</style>
+</head>
+<body>
+
+<!-- WebGL2 画布 (雨滴效果) -->
+<canvas id="glCanvas"></canvas>
+<audio id="rainAudio" src="./rain.mp3" preload="auto" aria-hidden="true"></audio>
+<audio id="rainAudioNext" src="./rain.mp3" preload="auto" aria-hidden="true"></audio>
+
+<!-- 控制面板 -->
+<div id="ctrl" class="collapsed" aria-expanded="false">
+  <div class="ctrl-header">
+    <h3>雨幕控制台</h3>
+    <span class="arrow"></span>
+  </div>
+  <div class="ctrl-body">
+    <div class="section">
+      <div class="section-title">雨滴参数</div>
+      <div class="row"><label>雨势</label><input id="sRain" type="range" min="0" max="100" value="63"><span class="val" id="vRain">63</span></div>
+      <div class="row"><label>流速</label><input id="sSpeed" type="range" min="5" max="40" value="13"><span class="val" id="vSpeed">13</span></div>
+      <div class="row"><label>大小</label><input id="sSize" type="range" min="0" max="100" value="64"><span class="val" id="vSize">64</span></div>
+      <div class="row"><label>密度</label><input id="sDensity" type="range" min="0" max="100" value="6"><span class="val" id="vDensity">6</span></div>
+      <div class="row"><label>雾气</label><input id="sBlur" type="range" min="0" max="100" value="53"><span class="val" id="vBlur">53</span></div>
+      <div class="row"><label>折射</label><input id="sRef" type="range" min="0" max="100" value="100"><span class="val" id="vRef">100</span></div>
+      <div class="row"><label>距离</label><input id="sZoom" type="range" min="0" max="100" value="75"><span class="val" id="vZoom">75</span></div>
+      <div class="row"><label>闪电</label><label class="toggle"><input id="tLightning" type="checkbox"><span class="slider"></span></label></div>
+    </div>
+    <div class="sep"></div>
+    <div class="section">
+      <div class="section-title">背景</div>
+      <div class="row"><label>聚散</label><input id="sSpread" type="range" min="0" max="100" value="100"><span class="val" id="vSpread">100</span></div>
+    </div>
+    <div class="sep"></div>
+    <div class="section">
+      <div class="section-title">声音</div>
+      <div class="row"><label>雨声</label><label class="toggle"><input id="tSound" type="checkbox" checked><span class="slider"></span></label></div>
+      <div class="row"><label>音量</label><input id="sVolume" type="range" min="0" max="100" value="28" aria-label="雨声音量"><span class="val" id="vVolume">28</span></div>
+      <div class="audio-status" id="audioStatus">点击页面后开始播放</div>
+    </div>
+    <div class="sep"></div>
+    <div class="section">
+      <div class="section-title">素材</div>
+      <div class="btns">
+        <label class="btn" for="fileIn">上传图片/视频</label>
+        <input id="fileIn" type="file" accept="image/*,video/*">
+        <div class="btn secondary" id="btnReset">恢复默认</div>
+      </div>
+      <div class="media-name" id="mediaName"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   WebGL2 — 雨滴折射着色器
+   ============================================================ */
+const glCanvas = document.getElementById('glCanvas');
+const gl = glCanvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true });
+if (!gl) throw new Error('WebGL2 不受支持');
+
+// ── 顶点着色器 ──
+const VERT = `#version 300 es
+precision highp float;
+in vec2 a_pos;
+void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }`;
+
+// ── 片段着色器 ──
+const FRAG = `#version 300 es
+precision highp float;
+uniform vec3  iResolution;
+uniform float iTime;
+uniform vec4  iMouse;
+uniform sampler2D iChannel0;
+uniform float u_rainAmount;
+uniform float u_blurMix;
+uniform float u_refraction;
+uniform float u_lightning;
+uniform float u_speed;
+uniform float u_dropSize;
+uniform float u_density;
+uniform float u_spread;
+uniform float u_zoom;
+uniform vec4  u_ripples[8];
+out vec4 fragColor;
+
+#define S(a,b,t) smoothstep(a,b,t)
+#define USE_POST_PROCESSING
+
+vec3 N13(float p){
+  vec3 p3=fract(vec3(p)*vec3(.1031,.11369,.13787));
+  p3+=dot(p3,p3.yzx+19.19);
+  return fract(vec3((p3.x+p3.y)*p3.z,(p3.x+p3.z)*p3.y,(p3.y+p3.z)*p3.x));
+}
+vec4 N14(float t){return fract(sin(t*vec4(123.,1024.,1456.,264.))*vec4(6547.,345.,8799.,1564.));}
+float N(float t){return fract(sin(t*12345.564)*7658.76);}
+float Saw(float b,float t){return S(0.,b,t)*S(1.,b,t);}
+
+vec2 DropLayer2(vec2 uv,float t){
+  vec2 UV=uv;
+  uv.y+=t*0.75;
+  vec2 a=vec2(6.,1.)*u_dropSize,grid=a*2.*u_density;
+  vec2 id=floor(uv*grid);
+  float colShift=N(id.x);
+  uv.y+=colShift;
+  id=floor(uv*grid);
+  vec3 n=N13(id.x*35.2+id.y*2376.1);
+  vec2 st=fract(uv*grid)-vec2(.5,0);
+  float x=n.x-.5;
+  float y=UV.y*20.;
+  float wiggle=sin(y+sin(y));
+  x+=wiggle*(.5-abs(x))*(n.z-.5); x*=.7;
+  float ti=fract(t+n.z);
+  y=(Saw(.85,ti)-.5)*.9+.5;
+  vec2 p=vec2(x,y);
+  float d=length((st-p)*a.yx);
+  float mainDrop=S(.3,.0,d);
+  float r=sqrt(S(1.,y,st.y));
+  float cd=abs(st.x-x);
+  float trail=S(.23*r,.15*r*r,cd);
+  float trailFront=S(-.02,.02,st.y-y);
+  trail*=trailFront*r*r;
+  y=UV.y;
+  float trail2=S(.2*r,.0,cd);
+  float droplets=max(0.,(sin(y*(1.-y)*120.)-st.y))*trail2*trailFront*n.z;
+  y=fract(y*10.)+(st.y-.5);
+  float dd=length(st-vec2(x,y));
+  droplets=S(.3,0.,dd);
+  float m=mainDrop+droplets*r*trailFront;
+  return vec2(m,trail);
+}
+
+float StaticDrops(vec2 uv,float t){
+  uv*=40.*u_density;
+  vec2 id=floor(uv); uv=fract(uv)-.5;
+  vec3 n=N13(id.x*107.45+id.y*3543.654);
+  vec2 p=(n.xy-.5)*.7;
+  float d=length(uv-p);
+  float fade=Saw(.025,fract(t+n.z));
+  return S(.3,0.,d)*fract(n.z*10.)*fade;
+}
+
+vec2 Drops(vec2 uv,float t,float l0,float l1,float l2){
+  float s=StaticDrops(uv,t)*l0;
+  vec2 m1=DropLayer2(uv,t)*l1;
+  vec2 m2=DropLayer2(uv*1.85,t)*l2;
+  float c=s+m1.x+m2.x;
+  c=S(.3,1.,c);
+  return vec2(c,max(m1.y*l0,m2.y*l1));
+}
+
+void mainImage(out vec4 fc,in vec2 fCoord){
+  vec2 uv=(fCoord.xy-.5*iResolution.xy)/iResolution.y;
+  vec2 UV=fCoord.xy/iResolution.xy;
+  float T=iTime;
+  float t=T*.2*u_speed*u_dropSize;
+
+  float rainAmount=u_rainAmount;
+  float minBlur=mix(0.,4.,u_blurMix);
+  float maxBlur=mix(0.,6.,rainAmount*u_blurMix);
+
+  uv*=u_zoom;
+
+  float staticDrops=S(-.5,1.,rainAmount)*2.;
+  float layer1=S(.25,.75,rainAmount);
+  float layer2=S(.0,.5,rainAmount);
+  vec2 c=Drops(uv,t,staticDrops,layer1,layer2);
+
+  vec2 e=vec2(.001,0.);
+  float cx=Drops(uv+e,t,staticDrops,layer1,layer2).x;
+  float cy=Drops(uv+e.yx,t,staticDrops,layer1,layer2).x;
+  vec2 n=vec2(cx-c.x,cy-c.x)*u_refraction;
+
+  // 点击产生的池塘涟漪：波峰扩散，尾部保留数圈逐渐衰减的水纹。
+  vec2 rippleN=vec2(0.);
+  float rippleGlow=0.;
+  float aspect=iResolution.x/iResolution.y;
+  for(int i=0;i<8;i++){
+    vec4 ripple=u_ripples[i];
+    float age=T-ripple.z;
+    if(ripple.w>.5&&age>=0.&&age<3.){
+      vec2 delta=UV-ripple.xy;
+      delta.x*=aspect;
+      float dist=length(delta);
+      float radius=age*.24;
+      float lag=radius-dist;
+      float band=step(0.,lag)*(1.-S(0.,.16,lag));
+      float decay=exp(-age*.72);
+      float wave=sin(lag*105.)*band*decay;
+      vec2 dir=delta/max(dist,.001);
+      dir.x/=aspect;
+      rippleN+=dir*wave*.007;
+      rippleGlow+=abs(wave)*.12;
+    }
+  }
+  n+=clamp(rippleN,vec2(-.025),vec2(.025));
+
+  float focus=clamp(mix(maxBlur-c.y,minBlur,S(.1,.2,c.x)), 0.0, 10.0);
+  vec2 bgUV=(UV+n-.5)*u_spread+.5;
+  vec3 col=textureLod(iChannel0,bgUV,focus).rgb;
+  col+=min(rippleGlow,.65)*vec3(.10,.14,.18);
+
+  #ifdef USE_POST_PROCESSING
+  t=(T+3.)*.5;
+  float colFade=sin(t*.2)*.5+.5;
+  col*=mix(vec3(1.),vec3(.8,.9,1.3),colFade);
+  float lightning=sin(t*sin(t*10.));
+  lightning*=pow(max(0.,sin(t+sin(t))),10.);
+  col*=1.+lightning*u_lightning;
+  col*=1.-dot(UV-=.5,UV);
+  #endif
+
+  fc=vec4(col,1.);
+}
+
+void main(){ mainImage(fragColor,gl_FragCoord.xy); }`;
+
+/* ── 编译 & 链接 ── */
+function compileShader(src, type) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(s));
+    gl.deleteShader(s);
+    return null;
+  }
+  return s;
+}
+
+const vs = compileShader(VERT, gl.VERTEX_SHADER);
+const fs = compileShader(FRAG, gl.FRAGMENT_SHADER);
+if (!vs || !fs) throw new Error('Shader 编译失败');
+const prog = gl.createProgram();
+gl.attachShader(prog, vs);
+gl.attachShader(prog, fs);
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+  throw new Error('Shader 链接失败: ' + gl.getProgramInfoLog(prog));
+}
+gl.useProgram(prog);
+
+/* ── 全屏三角形 ── */
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, 'a_pos');
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+/* ── Uniforms ── */
+const uResolution = gl.getUniformLocation(prog, 'iResolution');
+const uTime       = gl.getUniformLocation(prog, 'iTime');
+const uMouse      = gl.getUniformLocation(prog, 'iMouse');
+const uChannel0   = gl.getUniformLocation(prog, 'iChannel0');
+const uRain       = gl.getUniformLocation(prog, 'u_rainAmount');
+const uBlur       = gl.getUniformLocation(prog, 'u_blurMix');
+const uRef        = gl.getUniformLocation(prog, 'u_refraction');
+const uLightning  = gl.getUniformLocation(prog, 'u_lightning');
+const uSpeedU     = gl.getUniformLocation(prog, 'u_speed');
+const uDropSize   = gl.getUniformLocation(prog, 'u_dropSize');
+const uDensity    = gl.getUniformLocation(prog, 'u_density');
+const uSpread     = gl.getUniformLocation(prog, 'u_spread');
+const uZoom       = gl.getUniformLocation(prog, 'u_zoom');
+const uRipples    = gl.getUniformLocation(prog, 'u_ripples[0]');
+
+/* ── 背景纹理 ── */
+const bgTex = gl.createTexture();
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, bgTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+function uploadTex(src) {
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bgTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+  gl.generateMipmap(gl.TEXTURE_2D);
+}
+
+// ── 立即生成一张渐变纹理作为默认背景 ──
+function generateDefaultBg() {
+  const W = 512, H = 512;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const cx = cv.getContext('2d');
+  const img = cx.createImageData(W, H);
+  const d = img.data;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const p = (y * W + x) * 4;
+      const u = x / W, v = y / H;
+      const f = Math.sin(u * 3 + v * 2) * 0.5
+              + Math.sin(u * 5 - v * 4 + 1) * 0.3
+              + Math.sin((u + v) * 6) * 0.2;
+      const t = f * 0.5 + 0.5;
+      d[p]     = 35 + t * 160;
+      d[p + 1] = 10 + t * 70;
+      d[p + 2] = 20 + t * 30;
+      d[p + 3] = 255;
+    }
+  }
+  cx.putImageData(img, 0, 0);
+  uploadTex(cv);
+}
+generateDefaultBg();
+
+// 从 HTML 同目录加载默认背景
+let defaultBgEl = null;
+const _bgImg = new Image();
+_bgImg.onload = () => { defaultBgEl = _bgImg; uploadTex(_bgImg); };
+_bgImg.src = './background.png';
+
+/* ============================================================
+   状态
+   ============================================================ */
+let mediaEl    = null;   // 当前活跃的媒体 (null = 使用默认背景)
+let mouseX = 0, mouseY = 0, mouseDown = 0;
+const MAX_RIPPLES = 8;
+const ripples = Array.from({ length: MAX_RIPPLES }, () => ({ x: 0, y: 0, startedAt: -100, active: 0 }));
+const rippleUniformData = new Float32Array(MAX_RIPPLES * 4);
+let rippleCursor = 0;
+
+function spawnRipple(clientX, clientY) {
+  const ripple = ripples[rippleCursor];
+  ripple.x = clientX / glCanvas.clientWidth;
+  ripple.y = 1 - clientY / glCanvas.clientHeight;
+  ripple.startedAt = elapsed;
+  ripple.active = 1;
+  rippleCursor = (rippleCursor + 1) % MAX_RIPPLES;
+}
+
+const sRain  = document.getElementById('sRain');
+const sBlur  = document.getElementById('sBlur');
+const sRef   = document.getElementById('sRef');
+const sSpeed = document.getElementById('sSpeed');
+const sSize  = document.getElementById('sSize');
+const sDensity = document.getElementById('sDensity');
+const sSpread = document.getElementById('sSpread');
+const sZoom   = document.getElementById('sZoom');
+const tLightning = document.getElementById('tLightning');
+const rainAudio = document.getElementById('rainAudio');
+const rainAudioNext = document.getElementById('rainAudioNext');
+const tSound = document.getElementById('tSound');
+const sVolume = document.getElementById('sVolume');
+const vVolume = document.getElementById('vVolume');
+const audioStatus = document.getElementById('audioStatus');
+const vRain  = document.getElementById('vRain');
+const vBlur  = document.getElementById('vBlur');
+const vRef   = document.getElementById('vRef');
+const vSpeed = document.getElementById('vSpeed');
+const vSize  = document.getElementById('vSize');
+const vDensity = document.getElementById('vDensity');
+const vSpread = document.getElementById('vSpread');
+const vZoom   = document.getElementById('vZoom');
+
+function getRain()   { return sRain.value   / 100; }
+function getBlur()   { return sBlur.value   / 100; }
+function getRef()    { return sRef.value    / 100; }
+function getSpeed()  { return sSpeed.value  / 10;  }
+function getSize()   { return 2.2 - sSize.value / 100 * 1.55; }
+function getDensity(){ return 0.725 + sDensity.value / 100 * 1.275; }
+function getSpread() { return sSpread.value / 100; }
+function getZoom()   { return 2.0 - sZoom.value / 100 * 1.6; }
+
+/* ============================================================
+   环境雨声（双音轨交叉淡化，隐藏循环接缝）
+   ============================================================ */
+const rainTracks = [rainAudio, rainAudioNext];
+let activeRainTrack = 0;
+let rainLoopTimer = 0;
+let rainVolumeFrame = 0;
+
+function getRainVolume() {
+  return sVolume.value / 100;
+}
+
+function cancelRainTransition() {
+  cancelAnimationFrame(rainVolumeFrame);
+  clearTimeout(rainLoopTimer);
+}
+
+function fadeInRain(track, duration = 700) {
+  cancelAnimationFrame(rainVolumeFrame);
+  const startedAt = performance.now();
+  const startVolume = track.volume;
+
+  function step(now) {
+    const progress = Math.min((now - startedAt) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    track.volume = startVolume + (getRainVolume() - startVolume) * eased;
+    if (progress < 1) rainVolumeFrame = requestAnimationFrame(step);
+  }
+
+  rainVolumeFrame = requestAnimationFrame(step);
+}
+
+function scheduleRainCrossfade(track) {
+  clearTimeout(rainLoopTimer);
+  if (!Number.isFinite(track.duration) || track.duration <= 0) {
+    track.addEventListener('loadedmetadata', () => scheduleRainCrossfade(track), { once: true });
+    return;
+  }
+
+  const crossfadeSeconds = Math.min(2.2, Math.max(1.2, track.duration * 0.14));
+  const secondsUntilFade = Math.max(0.05, track.duration - track.currentTime - crossfadeSeconds);
+  rainLoopTimer = setTimeout(() => crossfadeRainTracks(crossfadeSeconds), secondsUntilFade * 1000);
+}
+
+async function crossfadeRainTracks(duration) {
+  if (!tSound.checked) return;
+
+  const outgoingIndex = activeRainTrack;
+  const incomingIndex = 1 - activeRainTrack;
+  const outgoing = rainTracks[outgoingIndex];
+  const incoming = rainTracks[incomingIndex];
+  incoming.currentTime = 0;
+  incoming.volume = 0;
+
+  try {
+    await incoming.play();
+  } catch {
+    audioStatus.textContent = '点击页面后继续播放';
+    return;
+  }
+
+  cancelAnimationFrame(rainVolumeFrame);
+  const startedAt = performance.now();
+
+  function step(now) {
+    const progress = Math.min((now - startedAt) / (duration * 1000), 1);
+    const eased = progress * progress * (3 - 2 * progress);
+    const volume = getRainVolume();
+    outgoing.volume = volume * (1 - eased);
+    incoming.volume = volume * eased;
+
+    if (progress < 1) {
+      rainVolumeFrame = requestAnimationFrame(step);
+    } else {
+      outgoing.pause();
+      outgoing.currentTime = 0;
+      outgoing.volume = 0;
+      activeRainTrack = incomingIndex;
+      scheduleRainCrossfade(incoming);
+    }
+  }
+
+  rainVolumeFrame = requestAnimationFrame(step);
+}
+
+async function startRainAudio() {
+  if (!tSound.checked) return;
+  const activeTrack = rainTracks[activeRainTrack];
+
+  try {
+    if (activeTrack.paused) {
+      activeTrack.volume = 0;
+      await activeTrack.play();
+    }
+    fadeInRain(activeTrack);
+    scheduleRainCrossfade(activeTrack);
+    audioStatus.textContent = '正在播放 · 无缝循环';
+  } catch {
+    audioStatus.textContent = '点击页面后开始播放';
+  }
+}
+
+function stopRainAudio() {
+  cancelRainTransition();
+  const startVolumes = rainTracks.map(track => track.volume);
+  const startedAt = performance.now();
+  const duration = 450;
+
+  function step(now) {
+    const progress = Math.min((now - startedAt) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    rainTracks.forEach((track, index) => {
+      track.volume = startVolumes[index] * (1 - eased);
+    });
+
+    if (progress < 1) {
+      rainVolumeFrame = requestAnimationFrame(step);
+    } else {
+      rainTracks.forEach(track => track.pause());
+      audioStatus.textContent = '雨声已关闭';
+    }
+  }
+
+  rainVolumeFrame = requestAnimationFrame(step);
+}
+
+// 浏览器通常要求用户先与页面交互，才允许播放有声媒体。
+document.addEventListener('pointerdown', startRainAudio, { once: true });
+document.addEventListener('keydown', startRainAudio, { once: true });
+
+tSound.addEventListener('change', () => {
+  if (tSound.checked) {
+    startRainAudio();
+  } else {
+    stopRainAudio();
+  }
+});
+
+sVolume.addEventListener('input', () => {
+  vVolume.textContent = sVolume.value;
+  const playingTracks = rainTracks.filter(track => !track.paused);
+  if (playingTracks.length === 1) playingTracks[0].volume = getRainVolume();
+});
+/* ============================================================
+   画布尺寸
+   ============================================================ */
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  glCanvas.width  = w;  glCanvas.height = h;
+  gl.viewport(0, 0, w, h);
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ============================================================
+   渲染循环
+   ============================================================ */
+let elapsed = 0, lastTs = 0;
+
+function frame(ts) {
+  requestAnimationFrame(frame);
+  const dt = lastTs ? Math.min((ts - lastTs) * 0.001, 0.1) : 0;
+  lastTs = ts;
+  elapsed += dt;
+
+  // 更新滑块显示值
+  vRain.textContent   = sRain.value;
+  vSpeed.textContent  = sSpeed.value;
+  vSize.textContent   = sSize.value;
+  vDensity.textContent = sDensity.value;
+  vBlur.textContent   = sBlur.value;
+  vRef.textContent    = sRef.value;
+  vSpread.textContent = sSpread.value;
+  vZoom.textContent   = sZoom.value;
+
+  // ── 视频需要每帧更新纹理 ──
+  if (mediaEl && mediaEl.tagName === 'VIDEO' && !mediaEl.paused) {
+    uploadTex(mediaEl);
+  }
+
+  // ── Uniforms ──
+  gl.uniform3f(uResolution, glCanvas.width, glCanvas.height, 1.0);
+  gl.uniform1f(uTime, elapsed);
+  gl.uniform4f(uMouse, mouseX, mouseY, mouseDown, 0);
+  for (let i = 0; i < MAX_RIPPLES; i++) {
+    const ripple = ripples[i];
+    if (ripple.active && elapsed - ripple.startedAt >= 3) ripple.active = 0;
+    const offset = i * 4;
+    rippleUniformData[offset] = ripple.x;
+    rippleUniformData[offset + 1] = ripple.y;
+    rippleUniformData[offset + 2] = ripple.startedAt;
+    rippleUniformData[offset + 3] = ripple.active;
+  }
+  gl.uniform4fv(uRipples, rippleUniformData);
+  gl.uniform1i(uChannel0, 0);
+  gl.uniform1f(uRain,  getRain());
+  gl.uniform1f(uBlur,  getBlur());
+  gl.uniform1f(uRef,   getRef());
+  gl.uniform1f(uLightning, tLightning.checked ? 1.0 : 0.0);
+  gl.uniform1f(uSpeedU,  getSpeed());
+  gl.uniform1f(uDropSize, getSize());
+  gl.uniform1f(uDensity, getDensity());
+  gl.uniform1f(uSpread,  getSpread());
+  gl.uniform1f(uZoom,    getZoom());
+
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+requestAnimationFrame(frame);
+
+/* ============================================================
+   鼠标交互 (仅在画布上)
+   ============================================================ */
+glCanvas.addEventListener('mousemove', e => {
+  mouseX = e.clientX;
+  mouseY = glCanvas.height - e.clientY;
+});
+glCanvas.addEventListener('pointerdown', e => {
+  mouseDown = 1;
+  spawnRipple(e.clientX, e.clientY);
+});
+window.addEventListener('pointerup', () => { mouseDown = 0; });
+
+/* ============================================================
+   媒体上传
+   ============================================================ */
+const fileIn    = document.getElementById('fileIn');
+const mediaName = document.getElementById('mediaName');
+
+fileIn.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+
+  // 清理旧媒体
+  if (mediaEl && mediaEl.tagName === 'VIDEO') {
+    mediaEl.pause(); mediaEl.src = '';
+  }
+
+  if (file.type.startsWith('video/')) {
+    const v = document.createElement('video');
+    v.src = url;
+    v.loop = true;
+    v.muted = true;
+    v.playsInline = true;
+    v.crossOrigin = 'anonymous';
+    v.addEventListener('loadeddata', () => {
+      mediaEl = v; uploadTex(v);
+      v.play();
+      mediaName.textContent = '🎬 ' + file.name;
+    });
+    v.load();
+  } else {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      mediaEl = img; uploadTex(img);
+      mediaName.textContent = '🖼️ ' + file.name;
+    };
+    img.src = url;
+  }
+});
+
+/* ── 恢复默认背景 ── */
+document.getElementById('btnReset').addEventListener('click', () => {
+  if (mediaEl && mediaEl.tagName === 'VIDEO') {
+    mediaEl.pause(); mediaEl.src = '';
+  }
+  mediaEl = null;
+  if (defaultBgEl) {
+    uploadTex(defaultBgEl);
+  } else {
+    generateDefaultBg();
+  }
+  mediaName.textContent = '';
+});
+
+/* ============================================================
+   滑块实时显示
+   ============================================================ */
+sRain.addEventListener('input',   () => { vRain.textContent   = sRain.value; });
+sSpeed.addEventListener('input',  () => { vSpeed.textContent  = sSpeed.value; });
+sSize.addEventListener('input',   () => { vSize.textContent   = sSize.value; });
+sDensity.addEventListener('input', () => { vDensity.textContent = sDensity.value; });
+sBlur.addEventListener('input',   () => { vBlur.textContent   = sBlur.value; });
+sRef.addEventListener('input',    () => { vRef.textContent    = sRef.value; });
+sSpread.addEventListener('input', () => { vSpread.textContent = sSpread.value; });
+sZoom.addEventListener('input',   () => { vZoom.textContent   = sZoom.value; });
+
+/* ============================================================
+   控制面板悬停展开
+   ============================================================ */
+const ctrl = document.getElementById('ctrl');
+const hoverCapable = window.matchMedia('(hover: hover) and (pointer: fine)');
+let ctrlCollapseTimer = 0;
+
+function expandCtrl() {
+  clearTimeout(ctrlCollapseTimer);
+  ctrl.classList.remove('collapsed');
+  ctrl.setAttribute('aria-expanded', 'true');
+}
+
+function collapseCtrl() {
+  ctrl.classList.add('collapsed');
+  ctrl.setAttribute('aria-expanded', 'false');
+}
+
+function applyCtrlInputMode() {
+  if (hoverCapable.matches) {
+    collapseCtrl();
+  } else {
+    expandCtrl();
+  }
+}
+
+ctrl.addEventListener('mouseenter', expandCtrl);
+ctrl.addEventListener('mouseleave', () => {
+  clearTimeout(ctrlCollapseTimer);
+  ctrlCollapseTimer = setTimeout(collapseCtrl, 160);
+});
+hoverCapable.addEventListener('change', applyCtrlInputMode);
+applyCtrlInputMode();
+
+</script>
+</body>
+</html>
