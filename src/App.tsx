@@ -29,15 +29,20 @@ export function App() {
       />
 
       <div className="poem-overlay" aria-hidden="true">
+        <img
+          className="poem-flourish"
+          src="/title-flourish.png"
+          alt=""
+        />
         <SplitText
           text={'“每一滴雨，都是天空写给大地的信。”'}
-          className="poem-cn"
+          className="poem-cn poem-cn-primary"
           tag="p"
-          delay={80}
-          duration={0.8}
-          ease="power3.out"
+          delay={64}
+          duration={1.4}
+          ease="power2.out"
           splitType="chars"
-          from={{ opacity: 0, y: 30, filter: 'blur(4px)' }}
+          from={{ opacity: 0, y: 18, filter: 'blur(10px)' }}
           to={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           threshold={0.1}
           rootMargin="-100px"
@@ -45,13 +50,13 @@ export function App() {
         />
         <SplitText
           text={'“而你，恰好经过了这场雨。”'}
-          className="poem-cn"
+          className="poem-cn poem-cn-secondary"
           tag="p"
-          delay={80}
-          duration={0.8}
-          ease="power3.out"
+          delay={56}
+          duration={1.25}
+          ease="power2.out"
           splitType="chars"
-          from={{ opacity: 0, y: 30, filter: 'blur(4px)' }}
+          from={{ opacity: 0, y: 14, filter: 'blur(8px)' }}
           to={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           threshold={0.1}
           rootMargin="-100px"
@@ -61,11 +66,11 @@ export function App() {
           text="Every raindrop is a letter from the sky, and you arrived right in time for the rain."
           className="poem-en"
           tag="p"
-          delay={40}
-          duration={0.6}
-          ease="power3.out"
+          delay={34}
+          duration={1.1}
+          ease="power2.out"
           splitType="words"
-          from={{ opacity: 0, y: 20, filter: 'blur(3px)' }}
+          from={{ opacity: 0, y: 8, filter: 'blur(5px)' }}
           to={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           threshold={0.1}
           rootMargin="-100px"

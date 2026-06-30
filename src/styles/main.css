@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400&family=Noto+Serif+SC:wght@400;500&display=swap");
+
 :root {
   color: #fff;
   background: #05070a;
@@ -395,47 +397,162 @@ input {
 
 .poem-overlay {
   position: fixed;
+  isolation: isolate;
   z-index: 8;
-  top: 50%;
+  top: 49%;
   left: 50%;
-  width: min(760px, calc(100vw - 64px));
-  color: rgb(255 255 255 / 90%);
+  width: min(1120px, calc(100vw - 72px));
+  color: #eefaff;
   text-align: center;
   pointer-events: none;
-  text-shadow:
-    0 2px 10px rgb(0 0 0 / 40%),
-    0 14px 34px rgb(0 0 0 / 26%);
   transform: translate(-50%, -50%);
 }
 
+.poem-flourish {
+  position: absolute;
+  z-index: 0;
+  top: 48%;
+  left: 50%;
+  width: 110%;
+  max-width: none;
+  opacity: .5;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 0 7px rgb(83 208 247 / 30%))
+    drop-shadow(0 3px 12px rgb(1 13 28 / 42%));
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%) scaleX(.96) scaleY(.72);
+  transform-origin: center;
+  animation: flourish-reveal 2.2s cubic-bezier(.2, .72, .18, 1) both;
+}
+
 .poem-cn {
+  position: relative;
+  z-index: 1;
+  display: block !important;
+  width: 100%;
   margin: 0;
   font-family:
-    "STKaiti",
-    "KaiTi",
-    "Kaiti SC",
+    "Noto Serif SC",
+    "Source Han Serif SC",
     "Songti SC",
+    "SimSun",
     serif;
-  font-size: clamp(24px, 3.15vw, 42px);
   font-weight: 400;
-  line-height: 1.56;
-  letter-spacing: .03em;
+  font-synthesis: none;
+  text-wrap: balance;
+  -webkit-font-smoothing: antialiased;
+}
+
+.poem-cn-primary {
+  font-size: clamp(36px, 4.45vw, 64px);
+  line-height: 1.28;
+  letter-spacing: .035em;
+}
+
+.poem-cn-secondary {
+  margin-top: .48em;
+  font-size: clamp(24px, 2.72vw, 39px);
+  font-weight: 400;
+  line-height: 1.34;
+  letter-spacing: .14em;
+}
+
+.poem-cn .split-char {
+  position: relative;
+  color: transparent;
+  background:
+    linear-gradient(
+      145deg,
+      #fff5e7 0%,
+      #f2fcff 34%,
+      #bdeeff 68%,
+      #58c8ef 100%
+    );
+  background-clip: text;
+  filter:
+    drop-shadow(0 1px 0 rgb(255 255 255 / 24%))
+    drop-shadow(0 4px 10px rgb(2 13 27 / 62%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: .28px rgb(232 249 255 / 68%);
+}
+
+.poem-cn-primary .split-char:nth-child(-n + 6) {
+  background:
+    linear-gradient(
+      145deg,
+      #ffd9aa 0%,
+      #fff0d4 34%,
+      #d9f6ff 66%,
+      #2fb9e8 100%
+    );
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.poem-cn-primary .split-char:nth-child(6),
+.poem-cn-primary .split-char:nth-child(11),
+.poem-cn-primary .split-char:nth-child(18),
+.poem-cn-secondary .split-char:nth-child(4),
+.poem-cn-secondary .split-char:nth-child(15) {
+  background:
+    linear-gradient(
+      155deg,
+      #fff1d8 0%,
+      #cdf4ff 38%,
+      #77dfff 68%,
+      #2fb9e8 100%
+    );
+  background-clip: text;
+  -webkit-background-clip: text;
 }
 
 .poem-en {
-  margin: 12px 0 0;
-  color: rgb(214 240 255 / 82%);
+  position: relative;
+  z-index: 1;
+  display: block !important;
+  width: 100%;
+  margin: 22px 0 0;
+  color: rgb(232 248 255 / 92%);
   font-family:
+    "Cormorant Garamond",
     "Palatino Linotype",
     "Book Antiqua",
     "Times New Roman",
     serif;
-  font-size: clamp(11px, 1.1vw, 14px);
+  font-size: clamp(13px, 1.24vw, 17px);
   font-style: italic;
-  letter-spacing: .2em;
+  font-weight: 400;
+  letter-spacing: .17em;
+  line-height: 1.4;
+  text-shadow:
+    0 2px 6px rgb(1 12 24 / 82%),
+    0 0 16px rgb(119 217 255 / 24%);
   text-transform: none;
 }
+@keyframes flourish-reveal {
+  0% {
+    opacity: 0;
+    filter:
+      blur(6px)
+      drop-shadow(0 0 4px rgb(83 208 247 / 0%));
+    transform: translate(-50%, -50%) scaleX(.76) scaleY(.58);
+  }
 
+  46% {
+    opacity: .22;
+  }
+
+  100% {
+    opacity: .5;
+    filter:
+      blur(0)
+      drop-shadow(0 0 7px rgb(83 208 247 / 30%))
+      drop-shadow(0 3px 12px rgb(1 13 28 / 42%));
+    transform: translate(-50%, -50%) scaleX(.96) scaleY(.72);
+  }
+}
 .error-notice {
   position: fixed;
   z-index: 30;
@@ -461,16 +578,20 @@ input {
 
 @media (max-height: 660px) {
   .poem-overlay {
-    width: min(680px, calc(100vw - 40px));
+    width: min(900px, calc(100vw - 48px));
   }
 
-  .poem-cn {
-    font-size: clamp(20px, 4.2vw, 30px);
-    line-height: 1.48;
+  .poem-cn-primary {
+    font-size: clamp(30px, 4vw, 48px);
+  }
+
+  .poem-cn-secondary {
+    margin-top: .34em;
+    font-size: clamp(21px, 2.45vw, 31px);
   }
 
   .poem-en {
-    margin-top: 8px;
+    margin-top: 14px;
     font-size: clamp(10px, 1.8vw, 12px);
     letter-spacing: .15em;
   }
@@ -489,6 +610,38 @@ input {
   }
 }
 
+@media (max-width: 720px) {
+  .poem-overlay {
+    top: 50%;
+    width: calc(100vw - 38px);
+  }
+
+  .poem-cn-primary {
+    font-size: clamp(15px, 4.9vw, 22px);
+    line-height: 1.46;
+    letter-spacing: .02em;
+  }
+
+  .poem-cn-secondary {
+    margin-top: .58em;
+    font-size: clamp(14px, 4.3vw, 20px);
+    line-height: 1.5;
+    letter-spacing: .08em;
+  }
+
+  .poem-en {
+    max-width: 34em;
+    margin: 18px auto 0;
+    font-size: 10px;
+    letter-spacing: .12em;
+    line-height: 1.65;
+  }
+
+  .poem-flourish {
+    top: 48%;
+    width: 126%;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
