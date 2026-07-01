@@ -1,0 +1,11 @@
+.poem-flourish {
+  animation-fill-mode: none;
+}
+
+@media (max-width: 720px) {
+  .rain-entry-button {
+    opacity: .34;
+    pointer-events: auto;
+    transform: translate(-50%, 0);
+  }
+}

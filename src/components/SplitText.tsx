@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText as GSAPSplitText } from 'gsap/SplitText';
@@ -40,27 +40,28 @@ const SplitText = ({
   const ref = useRef<HTMLElement>(null);
   const animationCompletedRef = useRef(false);
   const onCompleteRef = useRef(onLetterAnimationComplete);
-  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [fontsLoaded, setFontsLoaded] = useState(
+    () => document.fonts.status === 'loaded',
+  );
 
-  // Keep callback ref updated
   useEffect(() => {
     onCompleteRef.current = onLetterAnimationComplete;
   }, [onLetterAnimationComplete]);
 
   useEffect(() => {
-    if (document.fonts.status === 'loaded') {
-      setFontsLoaded(true);
-    } else {
-      document.fonts.ready.then(() => {
-        setFontsLoaded(true);
-      });
-    }
-  }, []);
+    if (fontsLoaded) return undefined;
+    let cancelled = false;
+    void document.fonts.ready.then(() => {
+      if (!cancelled) setFontsLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fontsLoaded]);
 
   useGSAP(
     () => {
       if (!ref.current || !text || !fontsLoaded) return;
-      // Prevent re-animation if already completed
       if (animationCompletedRef.current) return;
       const el = ref.current;
 
@@ -71,8 +72,8 @@ const SplitText = ({
               revert: () => void;
             }
           ).revert();
-        } catch (_) {
-          /* noop */
+        } catch {
+          // The previous split may already have been reverted.
         }
         (el as unknown as Record<string, unknown>)._rbsplitInstance = null;
       }
@@ -91,12 +92,15 @@ const SplitText = ({
 
       let targets: Element[];
       const assignTargets = (self: GSAPSplitText) => {
-        if (splitType.includes('chars') && self.chars.length)
+        if (splitType.includes('chars') && self.chars.length) {
           targets = self.chars;
-        if (!targets && splitType.includes('words') && self.words.length)
+        }
+        if (!targets && splitType.includes('words') && self.words.length) {
           targets = self.words;
-        if (!targets && splitType.includes('lines') && self.lines.length)
+        }
+        if (!targets && splitType.includes('lines') && self.lines.length) {
           targets = self.lines;
+        }
         if (!targets) targets = self.chars || self.words || self.lines;
       };
 
@@ -110,7 +114,7 @@ const SplitText = ({
         reduceWhiteSpace: false,
         onSplit: (self) => {
           assignTargets(self);
-          const tween = gsap.fromTo(
+          return gsap.fromTo(
             targets,
             { ...from },
             {
@@ -133,7 +137,6 @@ const SplitText = ({
               force3D: true,
             },
           );
-          return tween;
         },
       });
 
@@ -142,13 +145,13 @@ const SplitText = ({
       )._rbsplitInstance = splitInstance;
 
       return () => {
-        ScrollTrigger.getAll().forEach((st) => {
-          if (st.trigger === el) st.kill();
+        ScrollTrigger.getAll().forEach((trigger) => {
+          if (trigger.trigger === el) trigger.kill();
         });
         try {
           splitInstance.revert();
-        } catch (_) {
-          /* noop */
+        } catch {
+          // Cleanup can run after GSAP has already reverted the split.
         }
         (el as unknown as Record<string, unknown>)._rbsplitInstance = null;
       };
@@ -170,25 +173,26 @@ const SplitText = ({
     },
   );
 
-  const renderTag = () => {
-    const style: React.CSSProperties = {
-      textAlign,
-      overflow: 'hidden',
-      display: 'inline-block',
-      whiteSpace: 'normal',
-      wordWrap: 'break-word',
-      willChange: 'transform, opacity',
-    };
-    const classes = `split-parent ${className}`;
-    const Tag = tag || 'p';
-
-    return (
-      <Tag ref={ref as React.Ref<HTMLHeadingElement>} style={style} className={classes}>
-        {text}
-      </Tag>
-    );
+  const style: React.CSSProperties = {
+    textAlign,
+    overflow: 'hidden',
+    display: 'inline-block',
+    whiteSpace: 'normal',
+    wordWrap: 'break-word',
+    willChange: 'transform, opacity',
   };
-  return renderTag();
+  const classes = `split-parent ${className}`;
+  const Tag = tag;
+
+  return (
+    <Tag
+      ref={ref as React.Ref<HTMLHeadingElement>}
+      style={style}
+      className={classes}
+    >
+      {text}
+    </Tag>
+  );
 };
 
 export default SplitText;

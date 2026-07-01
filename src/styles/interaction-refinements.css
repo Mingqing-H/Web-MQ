@@ -1,0 +1,119 @@
+.poem-overlay .rain-entry-button {
+  pointer-events: auto;
+}
+
+.poem-overlay:not(.is-dissolving):not(.is-returning)
+  .rain-entry-button.is-ripple-lit {
+  color: #f8fdff;
+  background: rgb(7 32 49 / 52%);
+  box-shadow:
+    inset 0 0 0 1px rgb(218 247 255 / 30%),
+    inset 0 0 18px rgb(118 214 244 / 10%),
+    0 0 18px rgb(151 226 250 / 30%),
+    0 0 42px rgb(66 174 215 / 19%);
+  opacity: .96;
+  text-shadow:
+    0 2px 8px rgb(0 7 18 / 96%),
+    0 0 14px rgb(168 234 255 / 56%);
+  transform: translate(-50%, 0);
+  filter: brightness(1.12);
+  transition:
+    opacity 460ms cubic-bezier(.16, .72, .22, 1),
+    color 420ms ease,
+    background-color 480ms ease,
+    box-shadow 520ms ease,
+    filter 520ms ease,
+    text-shadow 520ms ease,
+    transform 420ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.poem-overlay:not(.is-dissolving):not(.is-returning)
+  .rain-entry-button.is-ripple-lit.is-ripple-receding {
+  background: rgb(4 18 31 / 8%);
+  box-shadow: none;
+  opacity: .02;
+  filter: brightness(.96);
+  text-shadow:
+    0 2px 9px rgb(0 8 20 / 90%),
+    0 0 12px rgb(91 213 255 / 26%);
+  transition:
+    opacity 1.3s cubic-bezier(.4, 0, .2, 1),
+    background-color 1.1s ease,
+    box-shadow 1.15s ease,
+    filter 1.2s ease,
+    text-shadow 1.15s ease;
+}
+
+.poem-overlay:not(.is-dissolving):not(.is-returning)
+  .rain-entry-button.is-ripple-lit
+  .rain-entry-line {
+  transform: scaleX(1);
+}
+
+.poem-overlay:not(.is-dissolving):not(.is-returning)
+  .rain-entry-button.is-ripple-lit.is-ripple-receding
+  .rain-entry-line {
+  transform: scaleX(.45);
+  transition-duration: 1.1s;
+}
+
+.poem-overlay.is-entry-near:not(.is-dissolving):not(.is-returning)
+  .rain-entry-button.is-ripple-lit.is-ripple-receding {
+  opacity: .28;
+}
+
+.poem-overlay.is-entry-near:not(.is-dissolving):not(.is-returning)
+  .rain-entry-button:not(:disabled),
+.poem-overlay:not(.is-dissolving):not(.is-returning)
+  .rain-entry-button:not(:disabled):is(:hover, :focus-visible) {
+  color: #f8fdff;
+  background: rgb(7 32 49 / 52%);
+  box-shadow:
+    inset 0 0 0 1px rgb(218 247 255 / 30%),
+    inset 0 0 18px rgb(118 214 244 / 10%),
+    0 0 18px rgb(151 226 250 / 30%),
+    0 0 42px rgb(66 174 215 / 19%);
+  opacity: .96 !important;
+  filter: brightness(1.12);
+  text-shadow:
+    0 2px 8px rgb(0 7 18 / 96%),
+    0 0 14px rgb(168 234 255 / 56%);
+}
+
+.robot-stage::before {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle 190px at var(--cursor-light-x, 72%) var(--cursor-light-y, 42%),
+      rgb(181 229 245 / 17%) 0%,
+      rgb(91 180 218 / 9%) 34%,
+      rgb(35 105 139 / 4%) 54%,
+      transparent 74%
+    );
+  mix-blend-mode: screen;
+  transition: opacity 260ms ease;
+  will-change: opacity;
+}
+
+.robot-stage.has-pointer-light::before {
+  opacity: 1;
+}
+
+
+@media (hover: none), (pointer: coarse) {
+  .robot-stage::before {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poem-overlay:not(.is-dissolving):not(.is-returning)
+    .rain-entry-button.is-ripple-lit {
+    transition-duration: 180ms !important;
+  }
+}

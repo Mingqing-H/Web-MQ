@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, type RainSettings } from '../types';
-import { FRAGMENT_SHADER, VERTEX_SHADER } from './shaders';
+import { FRAGMENT_SHADER, VERTEX_SHADER } from './portalShaders';
 
 const MAX_RIPPLES = 8;
 const RIPPLE_LIFETIME = 3;
@@ -30,6 +30,8 @@ interface Uniforms {
   spread: WebGLUniformLocation | null;
   zoom: WebGLUniformLocation | null;
   ripples: WebGLUniformLocation | null;
+  transitionOrigin: WebGLUniformLocation | null;
+  transitionProgress: WebGLUniformLocation | null;
 }
 
 export class RainRenderer {
@@ -61,6 +63,11 @@ export class RainRenderer {
   private mediaElement: HTMLImageElement | HTMLVideoElement | null = null;
   private mediaObjectUrl: string | null = null;
   private mediaVersion = 0;
+  private transitionOriginX = 0.5;
+  private transitionOriginY = 0.5;
+  private transitionStartedAt = -100;
+  private transitionDuration = 1.5;
+  private transitionActive = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -72,7 +79,10 @@ export class RainRenderer {
     this.gl = gl;
 
     this.vertexShader = this.compileShader(VERTEX_SHADER, gl.VERTEX_SHADER);
-    this.fragmentShader = this.compileShader(FRAGMENT_SHADER, gl.FRAGMENT_SHADER);
+    this.fragmentShader = this.compileShader(
+      FRAGMENT_SHADER,
+      gl.FRAGMENT_SHADER,
+    );
     this.program = this.createProgram(this.vertexShader, this.fragmentShader);
     this.buffer = this.createFullscreenTriangle();
     this.texture = this.createTexture();
@@ -80,7 +90,6 @@ export class RainRenderer {
 
     this.generateFallbackBackground();
     this.resize();
-
     window.addEventListener('resize', this.resize);
     window.addEventListener('pointerup', this.handlePointerUp);
     canvas.addEventListener('pointermove', this.handlePointerMove);
@@ -104,6 +113,24 @@ export class RainRenderer {
 
   setSettings(settings: RainSettings): void {
     this.settings = { ...DEFAULT_SETTINGS, ...settings };
+  }
+
+  startTransitionRipple(
+    origin: { clientX: number; clientY: number },
+    durationMs: number,
+  ): void {
+    const rect = this.canvas.getBoundingClientRect();
+    this.transitionOriginX = Math.min(
+      1,
+      Math.max(0, (origin.clientX - rect.left) / rect.width),
+    );
+    this.transitionOriginY = Math.min(
+      1,
+      Math.max(0, 1 - (origin.clientY - rect.top) / rect.height),
+    );
+    this.transitionStartedAt = this.elapsed;
+    this.transitionDuration = Math.max(0.18, durationMs / 1000);
+    this.transitionActive = true;
   }
 
   async setMediaFile(file: File | null): Promise<void> {
@@ -141,7 +168,6 @@ export class RainRenderer {
     const image = new Image();
     image.decoding = 'async';
     image.src = objectUrl;
-
     try {
       await this.waitForMedia(image, 'load');
       if (version !== this.mediaVersion || this.disposed) return;
@@ -176,7 +202,6 @@ export class RainRenderer {
     if (!shader) throw new Error('无法创建 WebGL 着色器');
     this.gl.shaderSource(shader, source);
     this.gl.compileShader(shader);
-
     if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
       const message = this.gl.getShaderInfoLog(shader) ?? '未知着色器错误';
       this.gl.deleteShader(shader);
@@ -194,13 +219,11 @@ export class RainRenderer {
     this.gl.attachShader(program, vertexShader);
     this.gl.attachShader(program, fragmentShader);
     this.gl.linkProgram(program);
-
     if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
       const message = this.gl.getProgramInfoLog(program) ?? '未知链接错误';
       this.gl.deleteProgram(program);
       throw new Error(message);
     }
-
     this.gl.useProgram(program);
     return program;
   }
@@ -214,7 +237,6 @@ export class RainRenderer {
       new Float32Array([-1, -1, 3, -1, -1, 3]),
       this.gl.STATIC_DRAW,
     );
-
     const position = this.gl.getAttribLocation(this.program, 'a_pos');
     this.gl.enableVertexAttribArray(position);
     this.gl.vertexAttribPointer(position, 2, this.gl.FLOAT, false, 0, 0);
@@ -268,6 +290,8 @@ export class RainRenderer {
       spread: get('u_spread'),
       zoom: get('u_zoom'),
       ripples: get('u_ripples[0]'),
+      transitionOrigin: get('u_transitionOrigin'),
+      transitionProgress: get('u_transitionProgress'),
     };
   }
 
@@ -277,7 +301,6 @@ export class RainRenderer {
     canvas.height = 540;
     const context = canvas.getContext('2d');
     if (!context) return;
-
     const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
     gradient.addColorStop(0, '#111820');
     gradient.addColorStop(0.45, '#24313b');
@@ -334,9 +357,11 @@ export class RainRenderer {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       media.addEventListener(eventName, () => resolve(), { once: true });
-      media.addEventListener('error', () => reject(new Error('素材加载失败')), {
-        once: true,
-      });
+      media.addEventListener(
+        'error',
+        () => reject(new Error('素材加载失败')),
+        { once: true },
+      );
     });
   }
 
@@ -395,7 +420,7 @@ export class RainRenderer {
     const dropSize = 2.2 - (settings.size / 100) * 1.55;
     const density = 0.725 + (settings.density / 100) * 1.275;
     const zoom = 2 - (settings.zoom / 100) * 1.6;
-    const ripple = Number.isFinite(settings.ripple)
+    const rippleStrength = Number.isFinite(settings.ripple)
       ? settings.ripple
       : DEFAULT_SETTINGS.ripple;
 
@@ -425,14 +450,32 @@ export class RainRenderer {
       this.rippleData[offset + 3] = ripple.active;
     }
 
+    let transitionProgress = 0;
+    if (this.transitionActive) {
+      transitionProgress = Math.min(
+        1,
+        Math.max(
+          0,
+          (this.elapsed - this.transitionStartedAt) / this.transitionDuration,
+        ),
+      );
+      if (transitionProgress >= 1) this.transitionActive = false;
+    }
+
     gl.uniform4fv(uniforms.ripples, this.rippleData);
+    gl.uniform2f(
+      uniforms.transitionOrigin,
+      this.transitionOriginX,
+      this.transitionOriginY,
+    );
+    gl.uniform1f(uniforms.transitionProgress, transitionProgress);
     gl.uniform1i(uniforms.channel, 0);
     gl.uniform1f(uniforms.rain, settings.rain / 100);
     gl.uniform1f(uniforms.blur, settings.blur / 100);
     gl.uniform1f(uniforms.refraction, settings.refraction / 100);
     gl.uniform1f(
       uniforms.rippleStrength,
-      ripple / RIPPLE_BASELINE,
+      rippleStrength / RIPPLE_BASELINE,
     );
     gl.uniform1f(uniforms.lightning, settings.lightning ? 1 : 0);
     gl.uniform1f(uniforms.speed, settings.speed / 10);

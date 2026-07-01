@@ -1,0 +1,61 @@
+.poem-overlay .poem-cn .split-char {
+  background:
+    linear-gradient(
+      145deg,
+      #fff8ee 0%,
+      #f6fbfd 46%,
+      #dceff5 78%,
+      #b9d7e0 100%
+    );
+  background-clip: text;
+  filter:
+    drop-shadow(0 1px 0 rgb(255 255 255 / 18%))
+    drop-shadow(0 4px 9px rgb(1 12 25 / 58%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: .22px rgb(238 249 252 / 55%);
+}
+
+.poem-overlay .poem-flourish {
+  filter: drop-shadow(0 3px 12px rgb(1 13 28 / 48%));
+}
+
+.poem-overlay.is-entry-near .poem-flourish {
+  filter:
+    drop-shadow(0 0 8px rgb(196 238 250 / 22%))
+    drop-shadow(0 4px 16px rgb(1 13 28 / 56%));
+}
+
+@media (min-width: 721px) {
+  .robot-stage .robot-spline {
+    right: 0;
+    left: auto;
+    width: 64% !important;
+  }
+
+  .robot-stage .robot-copy {
+    left: clamp(52px, 7vw, 108px);
+    width: min(470px, 36vw);
+  }
+
+  .robot-stage .robot-atmosphere {
+    background:
+      linear-gradient(
+        90deg,
+        rgb(1 7 13 / 94%) 0%,
+        rgb(3 12 20 / 74%) 32%,
+        rgb(3 12 20 / 20%) 57%,
+        transparent 74%
+      ),
+      linear-gradient(
+        180deg,
+        rgb(2 8 14 / 22%) 0%,
+        transparent 52%,
+        rgb(1 5 9 / 56%) 100%
+      );
+  }
+
+  .scene-status {
+    left: 72%;
+  }
+}
