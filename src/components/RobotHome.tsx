@@ -140,6 +140,7 @@ export function RobotHome({
       aria-hidden={phase === 'rain'}
       data-testid="robot-home"
     >
+      <div className="robot-backdrop" aria-hidden="true" />
       <div className="robot-scene" aria-hidden={phase === 'returning'}>
         {!isLoaded && !hasTimedOut && <SceneLoading />}
         {hasTimedOut && !isLoaded && <SceneError onRetry={retry} />}

@@ -12,6 +12,7 @@ import {
 } from './components/RainCanvas';
 import { RobotHome } from './components/RobotHome';
 import { useRainAudio } from './hooks/useRainAudio';
+import { useSoundEffect } from './hooks/useSoundEffect';
 import { DEFAULT_SETTINGS, type RainSettings } from './types';
 import './styles/portal.css';
 import './styles/portal-overrides.css';
@@ -66,6 +67,11 @@ export function App() {
   const buttonResetTimerRef = useRef<number | null>(null);
 
   useRainAudio('/rain.mp3', soundEnabled, volume);
+  const playEntrySound = useSoundEffect(
+    '/deep_ripple.mp3',
+    soundEnabled,
+    volume,
+  );
 
   const setViewPhase = useCallback((nextPhase: RainViewPhase) => {
     phaseRef.current = nextPhase;
@@ -180,6 +186,7 @@ export function App() {
   const enterRobotHome = useCallback(
     (point: PortalPoint) => {
       if (phaseRef.current !== 'rain') return;
+      playEntrySound();
       clearPhaseTimer();
       preloadRobotExperience();
       const duration = prefersReducedMotion()
@@ -203,7 +210,7 @@ export function App() {
         phaseTimerRef.current = null;
       }, duration);
     },
-    [clearPhaseTimer, setViewPhase],
+    [clearPhaseTimer, playEntrySound, setViewPhase],
   );
 
   const returnToRain = useCallback(() => {

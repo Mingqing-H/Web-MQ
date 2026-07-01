@@ -133,8 +133,7 @@
   inset: 0;
   overflow: hidden;
   color: #eef9ff;
-  background:
-    radial-gradient(circle at 67% 42%, #173146 0%, #07111b 40%, #02060b 76%);
+  background: #081722;
   contain: layout paint style;
   clip-path: circle(0 at var(--portal-x) var(--portal-y));
   pointer-events: none;
@@ -158,6 +157,34 @@
 .robot-stage.is-leaving {
   animation: portal-conceal 650ms cubic-bezier(.58, 0, .72, .3) both;
   pointer-events: none;
+}
+
+.robot-backdrop {
+  position: absolute;
+  z-index: 0;
+  inset: -3%;
+  background: url('/robot-rain-bg.png') center / cover no-repeat;
+  filter: saturate(.86) brightness(.8) blur(2px);
+  transform: scale(1.055);
+  transform-origin: var(--portal-x) var(--portal-y);
+  will-change: filter, transform;
+}
+
+.robot-stage.is-entering .robot-backdrop {
+  animation: robot-backdrop-arrive 1.5s cubic-bezier(.16, .78, .14, 1) both;
+}
+
+.robot-stage.is-active .robot-backdrop {
+  filter: saturate(.92) brightness(.9) blur(0);
+  transform: scale(1);
+}
+
+.robot-stage.is-leaving .robot-backdrop {
+  animation: robot-backdrop-leave 650ms cubic-bezier(.58, 0, .72, .3) both;
+}
+
+.robot-scene {
+  z-index: 1;
 }
 
 .robot-scene,
@@ -192,15 +219,15 @@
   background:
     linear-gradient(
       90deg,
-      rgb(1 7 13 / 82%) 0%,
-      rgb(3 12 20 / 50%) 28%,
-      transparent 58%
+      rgb(2 12 21 / 74%) 0%,
+      rgb(4 19 30 / 40%) 30%,
+      transparent 61%
     ),
     linear-gradient(
       180deg,
-      rgb(2 8 14 / 22%) 0%,
-      transparent 52%,
-      rgb(1 5 9 / 56%) 100%
+      rgb(7 24 35 / 14%) 0%,
+      transparent 55%,
+      rgb(2 10 16 / 48%) 100%
     );
 }
 
@@ -209,8 +236,8 @@
   inset: 0;
   content: "";
   background:
-    radial-gradient(circle at 72% 43%, transparent 0%, rgb(0 6 12 / 34%) 74%);
-  box-shadow: inset 0 0 140px rgb(0 2 7 / 60%);
+    radial-gradient(circle at 72% 43%, transparent 0%, rgb(1 11 18 / 22%) 76%);
+  box-shadow: inset 0 0 120px rgb(1 8 13 / 44%);
 }
 
 .robot-copy {
@@ -382,21 +409,57 @@
 
 @keyframes portal-reveal {
   from {
+    opacity: .38;
+    filter: blur(5px) saturate(1.18) brightness(1.18);
     clip-path: circle(0 at var(--portal-x) var(--portal-y));
   }
 
+  34% {
+    opacity: .92;
+  }
+
   to {
+    opacity: 1;
+    filter: blur(0) saturate(1) brightness(1);
     clip-path: circle(160vmax at var(--portal-x) var(--portal-y));
   }
 }
 
 @keyframes portal-conceal {
   from {
+    opacity: 1;
+    filter: blur(0) saturate(1) brightness(1);
     clip-path: circle(160vmax at var(--portal-x) var(--portal-y));
   }
 
   to {
+    opacity: .28;
+    filter: blur(5px) saturate(1.16) brightness(1.15);
     clip-path: circle(0 at var(--portal-x) var(--portal-y));
+  }
+}
+
+@keyframes robot-backdrop-arrive {
+  from {
+    filter: saturate(1.08) brightness(1.02) blur(12px);
+    transform: scale(1.12);
+  }
+
+  to {
+    filter: saturate(.92) brightness(.9) blur(0);
+    transform: scale(1);
+  }
+}
+
+@keyframes robot-backdrop-leave {
+  from {
+    filter: saturate(.92) brightness(.9) blur(0);
+    transform: scale(1);
+  }
+
+  to {
+    filter: saturate(1.04) brightness(.98) blur(9px);
+    transform: scale(1.08);
   }
 }
 
@@ -539,5 +602,9 @@
 
   .robot-spline {
     transition-duration: 180ms !important;
+  }
+
+  .robot-backdrop {
+    animation-duration: 180ms !important;
   }
 }
